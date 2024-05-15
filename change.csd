@@ -11,68 +11,99 @@ nchnls = 2
 
 ; Function to process the input sound
 instr 1
-
   
+  iTable = p4 ; Get the function table number from the p-field
 
-  aIn inarg
- 
+  ; Read from the function table
+  aIn tablei 0, iTable, 1
 
-    ; Define the loop parameters
-    iDur = p3
-    iBlockSize = 0.1
-    iNumBlocks = iDur / iBlockSize
+  ; Define the loop parameters
+  iDur = p3
+  iBlockSize = 0.1
+  iNumBlocks = iDur / iBlockSize
 
-    ; Loop through the audio file
-    kIndex init 0
-    loop:
-        ; Calculate the current time
-        kTime = kIndex * iBlockSize
+  ; Initialize the phase vocoder analysis
+  fftsize = 1024
+  overlap = 4
+  fsig pvsanal aIn, fftsize, fftsize/overlap, 1
 
-        ; Randomize parameters for each transformation
-        kPitchShift = random(-0.1, 0.1)
-        kTimbreMod = random(-0.1, 0.1)
-        kSpatialPos = random(-0.1, 0.1)
-        kAmplitudeMod = random(0.9, 1.1)
-        kGranularSynth = random(0.9, 1.1)
-        kFreqMod = random(0.9, 1.1)
-        kWaveDistortion = random(0.9, 1.1)
-        kEnvelopeVariation = random(0.9, 1.1)
-        kPhaseMod = random(0.9, 1.1)
-        kSpectralMorph = random(0.9, 1.1)
-        kConvolution = random(0.9, 1.1)
-        kFreqModSynth = random(0.9, 1.1)
-        kWaveShaping = random(0.9, 1.1)
-        kPhaseDistortion = random(0.9, 1.1)
-        kVibrato = random(0.9, 1.1)
-		
-		
-        ; Apply transformations
-        a3 = pvsfarpvc(a1, kPitchShift, kTimbreMod)
-        a4 = pan2(a3, kSpatialPos)
-        a5 = a4 * kAmplitudeMod
-        a6 = granule(a5, kGranularSynth, 0.1, 1000)
-        a7 = foscili(0.5, kFreqMod, 1)
-        a8 = tanh(a6 * a7 * kWaveDistortion)
-        a9 = transeg(kEnvelopeVariation, 0.1, 1, 0)
-        a10 = foscili(a8, kPhaseMod, 1)
-        a11 = balance(a10, a8, 0.5)
-        a12 = morph(a11, a8, kSpectralMorph)
-        a13, a14 convolve(a12, "impulse_response.wav")
-        a15 = foscili(a14, kFreqModSynth, 1)
-        a16 = foscili(a15, kWaveShaping, 1)
-        a17 = dist(a16, kPhaseDistortion)
-        a18 = vibrato(a17, kVibrato, 0.1, 1)
-        
-		
-        ; Output the processed audio
-        out(a18, a18)
+  ; Loop through the audio file
+  kIndex init 0
+  loop:
+      ; Calculate the current time
+      kTime = kIndex * iBlockSize
 
-        ; Increment index
-        kIndex += 1
-        if kIndex < iNumBlocks goto loop
-		
- 
-  
+      ; Randomize parameters for each transformation
+      kPitchShift = random(0.9, 1.1)
+      kTimbreMod = random(0.9, 1.1)
+      kSpatialPos = random(-1, 1)
+      kAmplitudeMod = random(0.9, 1.1)
+      kGranularSynth = random(0.9, 1.1)
+      kFreqMod = random(0.9, 1.1)
+      kWaveDistortion = random(0.9, 1.1)
+      kEnvelopeVariation = random(0.9, 1.1)
+      kPhaseMod = random(0.9, 1.1)
+      kSpectralMorph = random(0.9, 1.1)
+      kConvolution = random(0.9, 1.1)
+      kFreqModSynth = random(0.9, 1.1)
+      kWaveShaping = random(0.9, 1.1)
+      kPhaseDistortion = random(0.9, 1.1)
+      kVibrato = random(0.9, 1.1)
+
+      ; Apply pitch shifting
+      fsigShifted pvscale fsig, kPitchShift
+
+      ; Apply timbre modification using pvsmaska
+      ; Assuming a function table (ifn) for timbre modification is provided
+      ifn = 1 ; Replace with actual function table number
+      fsigTimbre pvsmaska fsigShifted, ifn, kTimbreMod
+
+      ; Resynthesize the signal
+      aOut pvsynth fsigTimbre
+
+      ; Apply spatial positioning and amplitude modulation
+      aOut = aOut * kAmplitudeMod
+      aOut = pan2(aOut, kSpatialPos)
+
+      ; Apply remaining transformations
+      a5 = aOut * kAmplitudeMod
+      a6 = granule(a5, kGranularSynth, 0.1, 1000)
+      a7 = foscili(0.5, kFreqMod, 1)
+      a8 = tanh(a6 * a7 * kWaveDistortion)
+      a9 = transeg(kEnvelopeVariation, 0.1, 1, 0)
+      a10 = foscili(a8, kPhaseMod, 1)
+      a11 = balance(a10, a8, 0.5)
+
+      ; Spectral morphing
+      fsig1 pvsanal a11, fftsize, fftsize/overlap, 1
+      fsig2 pvsanal a8, fftsize, fftsize/overlap, 1
+      fsigMorph pvsmooth fsig1, fsig2, kSpectralMorph
+      a12 pvsynth fsigMorph
+
+      ; Get the length of the impulse response file in seconds
+      iImpulseLen filelen "impulse_response.wav"
+
+      ; Convert the length to samples by multiplying with the sample rate
+      iImpulseLenSamples = iImpulseLen * sr
+
+      ; Now use this length in the ftgen opcode
+      giImpulse ftgen 0, 0, iImpulseLenSamples, 1, "impulse_response.wav", 0, 0, 1
+
+      ; Now use this function table in the convolve opcode
+      a13, a14 convolve a12, giImpulse
+
+      a15 = foscili(a14, kFreqModSynth, 1)
+      a16 = foscili(a15, kWaveShaping, 1)
+      a17 = distort(a16, kPhaseDistortion)
+      a18 = vibrato(a17, kVibrato, 0.1, 1)
+      
+      ; Output the processed audio
+      out(a18, a18)
+
+      ; Increment index
+      kIndex += 1
+      if kIndex < iNumBlocks goto loop
+		   
   ; Output the processed sound
   out a18
 endin
