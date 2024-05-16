@@ -1,6 +1,6 @@
 <CsoundSynthesizer>
 <CsOptions>
--o "%s/output.mp3" -W
+-o output.mp3
 </CsOptions>
 <CsInstruments>
 
@@ -9,134 +9,132 @@ ksmps = 32
 nchnls = 2
 0dbfs = 1
 
-; Function to process the input sound
+; Initialize the impulse response
+giImpRespLen filelen "impulse_response.wav"
+giImpulse ftgen 0, 0, giImpRespLen * sr, 1, "impulse_response.wav", 0, 0, 1
+
+; Initialize the function table for granule and foscili
+giFunctionTable ftgen 1, 0, 32768, 10, 1
+giSineTable ftgen 2, 0, 8192, 10, 1
+
+; Initialize the function table for distort
+giDistortTable ftgen 3, 0, 257, 9, 0.5, 1, 270  ; sigmoid function
+
+; Global variables for combined output
+gaOutputLeft init 0
+gaOutputRight init 0
+
 instr 1
-  
-  iTable = p4 ; Get the function table number from the p-field
+  aIn soundin p4
 
-  ; Read from the function table
-  aIn tablei 0, iTable, 1
+  gifftsize = int(1024)
+  gioverlap = gifftsize / 4
+  giwintype = 1 ; von Hann window
 
-  ; Define the loop parameters
-  iDur = p3
-  iBlockSize = 0.1
-  iNumBlocks = iDur / iBlockSize
+  fsig pvsanal aIn, gifftsize, gioverlap, gifftsize, giwintype
 
-  ; Initialize the phase vocoder analysis
-  fftsize = 1024
-  overlap = 4
-  fsig pvsanal aIn, fftsize, fftsize/overlap, 1
+  kPitchShift = random(0.9, 1.1)
+  kTimbreMod = random(0.9, 1.1)
+  kSpatialPos = random(-1, 1)
+  kAmplitudeMod = random(0.9, 1.1)
+  kGranularSynth = random(0.9, 1.1)
+  kFreqMod = random(0.9, 1.1)
+  kWaveDistortion = random(0.9, 1.1)
+  kEnvelopeVariation = random(0.1, 1.0)
+  kPhaseMod = random(0.9, 1.1)
+  kSpectralMorph = random(0.1, 0.9)
+  kFreqModSynth = random(0.9, 1.1)
+  kWaveShaping = random(0.9, 1.1)
+  kPhaseDistortion = random(0.9, 1.1)
+  kVibratoAmp = random(0.01, 0.1)  ; amplitude of vibrato
+  kVibratoFreq = random(5, 10)     ; frequency of vibrato
 
-  ; Loop through the audio file
-  kIndex init 0
-  loop:
-      ; Calculate the current time
-      kTime = kIndex * iBlockSize
+  fsigShifted pvscale fsig, kPitchShift
+  fsigTimbre pvsmaska fsigShifted, giFunctionTable, kTimbreMod
+  aOut pvsynth fsigTimbre
 
-      ; Randomize parameters for each transformation
-      kPitchShift = random(0.9, 1.1)
-      kTimbreMod = random(0.9, 1.1)
-      kSpatialPos = random(-1, 1)
-      kAmplitudeMod = random(0.9, 1.1)
-      kGranularSynth = random(0.9, 1.1)
-      kFreqMod = random(0.9, 1.1)
-      kWaveDistortion = random(0.9, 1.1)
-      kEnvelopeVariation = random(0.9, 1.1)
-      kPhaseMod = random(0.9, 1.1)
-      kSpectralMorph = random(0.9, 1.1)
-      kConvolution = random(0.9, 1.1)
-      kFreqModSynth = random(0.9, 1.1)
-      kWaveShaping = random(0.9, 1.1)
-      kPhaseDistortion = random(0.9, 1.1)
-      kVibrato = random(0.9, 1.1)
+  aOut = aOut * kAmplitudeMod
+  aLeft, aRight pan2 aOut, kSpatialPos
 
-      ; Apply pitch shifting
-      fsigShifted pvscale fsig, kPitchShift
+  ; Process the left channel
+  a5L = aLeft * kAmplitudeMod
+  a6L = granule(a5L, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 0.005, 5, kGranularSynth, 0.05, kGranularSynth, 0.05, 50, 50, 0.5, 1, 1.42, 0.29, 2, 0)
+  a7L = foscili(0.5, kFreqMod, 1, 1, kPhaseMod, giSineTable)
+  a8L = tanh(a6L * a7L * kWaveDistortion)
+  kEnvVar = transeg(0.1, 0.1, -5, 1)  ; Correct usage of transeg
+  a9L = a8L * kEnvVar
+  a10L = foscili(a9L, kPhaseMod, 1, 1, kPhaseMod, giSineTable)
+  a11L = balance(a10L, a9L, 0.5)
 
-      ; Apply timbre modification using pvsmaska
-      ; Assuming a function table (ifn) for timbre modification is provided
-      ifn = 1 ; Replace with actual function table number
-      fsigTimbre pvsmaska fsigShifted, ifn, kTimbreMod
+  fsig1L pvsanal a11L, gifftsize, gioverlap, gifftsize, giwintype
+  fsig2L pvsanal a9L, gifftsize, gioverlap, gifftsize, giwintype
+  kAmpSmooth = random(0.1, 0.9)  ; Example values, can be adjusted
+  kFreqSmooth = random(0.1, 0.9) ; Example values, can be adjusted
+  fsigMorphL pvsmooth fsig1L, kAmpSmooth, kFreqSmooth
+  a12L pvsynth fsigMorphL
 
-      ; Resynthesize the signal
-      aOut pvsynth fsigTimbre
+  a13L, a14L convolve a12L, giImpulse
+  a15L = foscili(a14L, kFreqModSynth, 1, 1, kFreqModSynth, giSineTable)
+  a16L = foscili(a15L, kWaveShaping, 1, 1, kWaveShaping, giSineTable)
+  a17L = distort(a16L, kPhaseDistortion, giDistortTable)  ; Correct usage of distort
 
-      ; Apply spatial positioning and amplitude modulation
-      aOut = aOut * kAmplitudeMod
-      aOut = pan2(aOut, kSpatialPos)
+  ; Apply vibrato
+  kVibrato vibrato kVibratoAmp, kVibratoFreq, 0.01, 0.01, 3, 5, 3, 5, giSineTable
+  a18L = a17L * (1 + kVibrato)
 
-      ; Apply remaining transformations
-      a5 = aOut * kAmplitudeMod
-      a6 = granule(a5, kGranularSynth, 0.1, 1000)
-      a7 = foscili(0.5, kFreqMod, 1)
-      a8 = tanh(a6 * a7 * kWaveDistortion)
-      a9 = transeg(kEnvelopeVariation, 0.1, 1, 0)
-      a10 = foscili(a8, kPhaseMod, 1)
-      a11 = balance(a10, a8, 0.5)
+  ; Process the right channel
+  a5R = aRight * kAmplitudeMod
+  a6R = granule(a5R, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 0.005, 5, kGranularSynth, 0.05, kGranularSynth, 0.05, 50, 50, 0.5, 1, 1.42, 0.29, 2, 0)
+  a7R = foscili(0.5, kFreqMod, 1, 1, kPhaseMod, giSineTable)
+  a8R = tanh(a6R * a7R * kWaveDistortion)
+  kEnvVarR = transeg(0.1, 0.1, -5, 1)  ; Correct usage of transeg
+  a9R = a8R * kEnvVarR
+  a10R = foscili(a9R, kPhaseMod, 1, 1, kPhaseMod, giSineTable)
+  a11R = balance(a10R, a9R, 0.5)
 
-      ; Spectral morphing
-      fsig1 pvsanal a11, fftsize, fftsize/overlap, 1
-      fsig2 pvsanal a8, fftsize, fftsize/overlap, 1
-      fsigMorph pvsmooth fsig1, fsig2, kSpectralMorph
-      a12 pvsynth fsigMorph
+  fsig1R pvsanal a11R, gifftsize, gioverlap, gifftsize, giwintype
+  fsig2R pvsanal a9R, gifftsize, gioverlap, gifftsize, giwintype
+  kAmpSmoothR = random(0.1, 0.9)  ; Example values, can be adjusted
+  kFreqSmoothR = random(0.1, 0.9) ; Example values, can be adjusted
+  fsigMorphR pvsmooth fsig1R, kAmpSmoothR, kFreqSmoothR
+  a12R pvsynth fsigMorphR
 
-      ; Get the length of the impulse response file in seconds
-      iImpulseLen filelen "impulse_response.wav"
+  a13R, a14R convolve a12R, giImpulse
+  a15R = foscili(a14R, kFreqModSynth, 1, 1, kFreqModSynth, giSineTable)
+  a16R = foscili(a15R, kWaveShaping, 1, 1, kWaveShaping, giSineTable)
+  a17R = distort(a16R, kPhaseDistortion, giDistortTable)  ; Correct usage of distort
 
-      ; Convert the length to samples by multiplying with the sample rate
-      iImpulseLenSamples = iImpulseLen * sr
+  ; Apply vibrato
+  kVibratoR vibrato kVibratoAmp, kVibratoFreq, 0.01, 0.01, 3, 5, 3, 5, giSineTable
+  a18R = a17R * (1 + kVibratoR)
 
-      ; Now use this length in the ftgen opcode
-      giImpulse ftgen 0, 0, iImpulseLenSamples, 1, "impulse_response.wav", 0, 0, 1
+  ; Add the processed audio to global variables for final mix
+  gaOutputLeft += a18L
+  gaOutputRight += a18R
 
-      ; Now use this function table in the convolve opcode
-      a13, a14 convolve a12, giImpulse
+endin
 
-      a15 = foscili(a14, kFreqModSynth, 1)
-      a16 = foscili(a15, kWaveShaping, 1)
-      a17 = distort(a16, kPhaseDistortion)
-      a18 = vibrato(a17, kVibrato, 0.1, 1)
-      
-      ; Output the processed audio
-      out(a18, a18)
-
-      ; Increment index
-      kIndex += 1
-      if kIndex < iNumBlocks goto loop
-		   
-  ; Output the processed sound
-  out a18
+instr 2
+  out(gaOutputLeft, gaOutputRight)
 endin
 
 </CsInstruments>
 <CsScore>
 
-; Get the directory path from the command line arguments
-; Default directory path is "./" if not provided
 SFileDir sprintf "%s", p1 == "" ? "./" : p1
 
-; Set the duration of the input MP3 files
 iDur = filelen(SFileDir + "/vocals.mp3")
 
-; Call the processSound function for each input file and store the processed audio in a buffer
-i 1 0 iDur  ; Process "voice.mp3"
-  gaVoice1 ftgen 1, 0, 0, 1, SFileDir + "/vocals"
-i 1 0 iDur  ; Process "drums.mp3"
-  gaDrums1 ftgen 1, 0, 0, 1, SFileDir + "/drums"
-i 1 0 iDur  ; Process "bass.mp3"
-  gaBass1 ftgen 1, 0, 0, 1, SFileDir + "/bass"
-i 1 0 iDur  ; Process "guitar.mp3"
-  gaGuitar1 ftgen 1, 0, 0, 1, SFileDir + "/guitar"
-i 1 0 iDur  ; Process "piano.mp3"
-  gaPiano1 ftgen 1, 0, 0, 1, SFileDir + "/piano"
-i 1 0 iDur  ; Process "others.mp3"
-  gaOthers1 ftgen 1, 0, 0, 1, SFileDir + "/other"
+; Process each input file by calling instr 1 with the file path as argument
+i 1 0 iDur SFileDir + "/vocals.mp3"
+;i 1 0 iDur SFileDir + "/drums.mp3"
+;i 1 0 iDur SFileDir + "/bass.mp3"
+;i 1 0 iDur SFileDir + "/guitar.mp3"
+; i 1 0 iDur SFileDir + "/piano.mp3"
+; i 1 0 iDur SFileDir + "/other.mp3"
 
-; Combine the processed audio into one buffer
-gaCombined1 = gaVoice1 + gaDrums1 + gaBass1 + gaGuitar1 + gaPiano1 + gaOthers1
-
-; Output the combined audio
-sampler gaCombined1, 1
+; Mix the processed audio
+i 2 0 iDur
 
 </CsScore>
 </CsoundSynthesizer>
