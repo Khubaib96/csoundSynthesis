@@ -25,7 +25,9 @@ gaOutputLeft init 0
 gaOutputRight init 0
 
 instr 1
-  aIn soundin p4
+  aInLeft, aInRight soundin p4
+
+  aIn = aInLeft + aInRight ; Mix the stereo inputs to mono for further processing
 
   gifftsize = int(1024)
   gioverlap = gifftsize / 4
@@ -58,7 +60,7 @@ instr 1
 
   ; Process the left channel
   a5L = aLeft * kAmplitudeMod
-  a6L = granule(a5L, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 0.005, 5, kGranularSynth, 0.05, kGranularSynth, 0.05, 50, 50, 0.5, 1, 1.42, 0.29, 2, 0)
+  a6L = granule(a5L, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 10, 0.0005, 50, 0.05, 50, 0.05, 30, 30, 0.5, 1, 1.42, 0.29, 2)
   a7L = foscili(0.5, kFreqMod, 1, 1, kPhaseMod, giSineTable)
   a8L = tanh(a6L * a7L * kWaveDistortion)
   kEnvVar = transeg(0.1, 0.1, -5, 1)  ; Correct usage of transeg
@@ -73,7 +75,7 @@ instr 1
   fsigMorphL pvsmooth fsig1L, kAmpSmooth, kFreqSmooth
   a12L pvsynth fsigMorphL
 
-  a13L, a14L convolve a12L, giImpulse
+  a13L, a14L convolve a12L, "impulse_response.cva"
   a15L = foscili(a14L, kFreqModSynth, 1, 1, kFreqModSynth, giSineTable)
   a16L = foscili(a15L, kWaveShaping, 1, 1, kWaveShaping, giSineTable)
   a17L = distort(a16L, kPhaseDistortion, giDistortTable)  ; Correct usage of distort
@@ -84,7 +86,7 @@ instr 1
 
   ; Process the right channel
   a5R = aRight * kAmplitudeMod
-  a6R = granule(a5R, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 0.005, 5, kGranularSynth, 0.05, kGranularSynth, 0.05, 50, 50, 0.5, 1, 1.42, 0.29, 2, 0)
+  a6R = granule(a5R, 64, 0.5, 1, 0, giFunctionTable, 0, 0, 10, 0.0005, 50, 0.05, 50, 0.05, 30, 30, 0.5, 1, 1.42, 0.29, 2)
   a7R = foscili(0.5, kFreqMod, 1, 1, kPhaseMod, giSineTable)
   a8R = tanh(a6R * a7R * kWaveDistortion)
   kEnvVarR = transeg(0.1, 0.1, -5, 1)  ; Correct usage of transeg
@@ -99,7 +101,7 @@ instr 1
   fsigMorphR pvsmooth fsig1R, kAmpSmoothR, kFreqSmoothR
   a12R pvsynth fsigMorphR
 
-  a13R, a14R convolve a12R, giImpulse
+  a13R, a14R convolve a12R, "impulse_response.cva"
   a15R = foscili(a14R, kFreqModSynth, 1, 1, kFreqModSynth, giSineTable)
   a16R = foscili(a15R, kWaveShaping, 1, 1, kWaveShaping, giSineTable)
   a17R = distort(a16R, kPhaseDistortion, giDistortTable)  ; Correct usage of distort
@@ -121,20 +123,16 @@ endin
 </CsInstruments>
 <CsScore>
 
-SFileDir sprintf "%s", p1 == "" ? "./" : p1
-
-iDur = filelen(SFileDir + "/vocals.mp3")
-
 ; Process each input file by calling instr 1 with the file path as argument
-i 1 0 iDur SFileDir + "/vocals.mp3"
-;i 1 0 iDur SFileDir + "/drums.mp3"
-;i 1 0 iDur SFileDir + "/bass.mp3"
-;i 1 0 iDur SFileDir + "/guitar.mp3"
-; i 1 0 iDur SFileDir + "/piano.mp3"
-; i 1 0 iDur SFileDir + "/other.mp3"
+i 1 0 60 "vocals.mp3"
+i 1 0 60 "drums.mp3"
+i 1 0 60 "bass.mp3"
+i 1 0 60 "guitar.mp3"
+i 1 0 60 "piano.mp3"
+i 1 0 60 "other.mp3"
 
 ; Mix the processed audio
-i 2 0 iDur
+i 2 0 60
 
 </CsScore>
 </CsoundSynthesizer>
