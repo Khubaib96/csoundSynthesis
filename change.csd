@@ -72,8 +72,8 @@ instr 1
   fsig2L pvsanal a9L, gifftsize, gioverlap, gifftsize, giwintype
   kAmpSmooth = random(0.1, 0.9)  ; Example values, can be adjusted
   kFreqSmooth = random(0.1, 0.9) ; Example values, can be adjusted
-  fsigMorphL pvsmooth fsig1L, kAmpSmooth, kFreqSmooth
-  a12L pvsynth fsigMorphL
+  fsigMorph pvsmooth fsig1L, kAmpSmooth, kFreqSmooth
+  a12L pvsynth fsigMorph
 
   a13L, a14L convolve a12L, "impulse_response.cva"
   a15L = foscili(a14L, kFreqModSynth, 1, 1, kFreqModSynth, giSineTable)
@@ -120,19 +120,31 @@ instr 2
   out(gaOutputLeft, gaOutputRight)
 endin
 
+instr 99
+  iFileLenVocals filelen "vocals.mp3"
+  iFileLenDrums filelen "drums.mp3"
+  iFileLenBass filelen "bass.mp3"
+  iFileLenGuitar filelen "guitar.mp3"
+  iFileLenPiano filelen "piano.mp3"
+  iFileLenOther filelen "other.mp3"
+
+  iMaxLen = max(iFileLenVocals, iFileLenDrums, iFileLenBass, iFileLenGuitar, iFileLenPiano, iFileLenOther)
+
+  ; Schedule processing for each file
+  schedule 1, 0, iFileLenVocals, "vocals.mp3"
+  schedule 1, 0, iFileLenDrums, "drums.mp3"
+  schedule 1, 0, iFileLenBass, "bass.mp3"
+  schedule 1, 0, iFileLenGuitar, "guitar.mp3"
+  schedule 1, 0, iFileLenPiano, "piano.mp3"
+  schedule 1, 0, iFileLenOther, "other.mp3"
+
+  ; Schedule the final mixing
+  schedule 2, 0, iMaxLen
+
+endin
+
 </CsInstruments>
 <CsScore>
-
-; Process each input file by calling instr 1 with the file path as argument
-i 1 0 60 "vocals.mp3"
-i 1 0 60 "drums.mp3"
-i 1 0 60 "bass.mp3"
-i 1 0 60 "guitar.mp3"
-i 1 0 60 "piano.mp3"
-i 1 0 60 "other.mp3"
-
-; Mix the processed audio
-i 2 0 60
-
+i 99 0 1
 </CsScore>
 </CsoundSynthesizer>
