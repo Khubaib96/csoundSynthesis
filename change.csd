@@ -1,6 +1,5 @@
 <CsoundSynthesizer>
 <CsOptions>
--o output.mp3
 </CsOptions>
 <CsInstruments>
 
@@ -117,7 +116,9 @@ instr 1
 endin
 
 instr 2
-  out(gaOutputLeft, gaOutputRight)
+  SInputPath strget 1
+  SOutputPath sprintf "%s/output.mp3", SInputPath
+  fout SOutputPath, 18, gaOutputLeft, gaOutputRight
 endin
 
 instr 99
