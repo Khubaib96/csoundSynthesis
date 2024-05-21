@@ -121,26 +121,39 @@ instr 2
 endin
 
 instr 99
-  iFileLenVocals filelen "input\\vocals.mp3"
-  iFileLenDrums filelen "input\\drums.mp3"
-  iFileLenBass filelen "input\\bass.mp3"
-  iFileLenGuitar filelen "input\\guitar.mp3"
-  iFileLenPiano filelen "input\\piano.mp3"
-  iFileLenOther filelen "input\\other.mp3"
+  ; Define the directory containing the mp3 files
+  Sdir = "input/"
 
-  iMaxLen = max(iFileLenVocals, iFileLenDrums, iFileLenBass, iFileLenGuitar, iFileLenPiano, iFileLenOther)
+  ; Get the list of mp3 files in the directory
+  Sfiles[] directory Sdir, ".mp3"
 
-  ; Schedule processing for each file
-  schedule 1, 0, iFileLenVocals, "input\\vocals.mp3"
-  schedule 1, 0, iFileLenDrums, "input\\drums.mp3"
-  schedule 1, 0, iFileLenBass, "input\\bass.mp3"
-  schedule 1, 0, iFileLenGuitar, "input\\guitar.mp3"
-  schedule 1, 0, iFileLenPiano, "input\\piano.mp3"
-  schedule 1, 0, iFileLenOther, "input\\other.mp3"
+  ; Get the number of files
+  iNumFiles = lenarray(Sfiles)
+
+  ; Initialize the maximum length variable
+  iMaxLen = 0
+
+  ; Loop through each file
+  iIndex = 0
+  while iIndex < iNumFiles do
+    ; Get the file path
+    Sfile = Sfiles[iIndex]
+
+    ; Get the file length
+    iFileLen filelen Sfile
+
+    ; Update the maximum length
+    iMaxLen = max(iMaxLen, iFileLen)
+
+    ; Schedule processing for the file
+    schedule 1, 0, iFileLen, Sfile
+
+    ; Increment the index
+    iIndex += 1
+  od
 
   ; Schedule the final mixing
   schedule 2, 0, iMaxLen
-
 endin
 
 </CsInstruments>
