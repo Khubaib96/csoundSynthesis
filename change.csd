@@ -121,8 +121,8 @@ instr 2
 endin
 
 instr 99
-  ; Define the directory containing the mp3 files
-  Sdir = "input/"
+  ; Get the directory path from the command line argument
+  Sdir strget 1
 
   ; Get the list of mp3 files in the directory
   Sfiles[] directory Sdir, ".mp3"
