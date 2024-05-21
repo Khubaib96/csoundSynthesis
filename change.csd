@@ -1,7 +1,6 @@
 <CsoundSynthesizer>
 <CsOptions>
--o dac
--m0
+-o output.mp3
 </CsOptions>
 <CsInstruments>
 
@@ -122,22 +121,22 @@ instr 2
 endin
 
 instr 99
-  iFileLenVocals filelen "vocals.mp3"
-  iFileLenDrums filelen "drums.mp3"
-  iFileLenBass filelen "bass.mp3"
-  iFileLenGuitar filelen "guitar.mp3"
-  iFileLenPiano filelen "piano.mp3"
-  iFileLenOther filelen "other.mp3"
+  iFileLenVocals filelen "input\\vocals.mp3"
+  iFileLenDrums filelen "input\\drums.mp3"
+  iFileLenBass filelen "input\\bass.mp3"
+  iFileLenGuitar filelen "input\\guitar.mp3"
+  iFileLenPiano filelen "input\\piano.mp3"
+  iFileLenOther filelen "input\\other.mp3"
 
   iMaxLen = max(iFileLenVocals, iFileLenDrums, iFileLenBass, iFileLenGuitar, iFileLenPiano, iFileLenOther)
 
   ; Schedule processing for each file
-  schedule 1, 0, iFileLenVocals, "vocals.mp3"
-  schedule 1, 0, iFileLenDrums, "drums.mp3"
-  schedule 1, 0, iFileLenBass, "bass.mp3"
-  schedule 1, 0, iFileLenGuitar, "guitar.mp3"
-  schedule 1, 0, iFileLenPiano, "piano.mp3"
-  schedule 1, 0, iFileLenOther, "other.mp3"
+  schedule 1, 0, iFileLenVocals, "input\\vocals.mp3"
+  schedule 1, 0, iFileLenDrums, "input\\drums.mp3"
+  schedule 1, 0, iFileLenBass, "input\\bass.mp3"
+  schedule 1, 0, iFileLenGuitar, "input\\guitar.mp3"
+  schedule 1, 0, iFileLenPiano, "input\\piano.mp3"
+  schedule 1, 0, iFileLenOther, "input\\other.mp3"
 
   ; Schedule the final mixing
   schedule 2, 0, iMaxLen
