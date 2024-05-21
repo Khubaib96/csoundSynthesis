@@ -1,6 +1,7 @@
 <CsoundSynthesizer>
 <CsOptions>
--o output.mp3
+-o dac
+-m0
 </CsOptions>
 <CsInstruments>
 
