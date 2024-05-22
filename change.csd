@@ -28,7 +28,7 @@ instr 1
 
   aIn = aInLeft + aInRight ; Mix the stereo inputs to mono for further processing
 
-  gifftsize = int(1024)
+  gifftsize = int(4410)  ; New FFT size for approximately 100ms
   gioverlap = gifftsize / 4
   giwintype = 1 ; von Hann window
 
