@@ -131,6 +131,11 @@ instr 99
   ; Get the number of files
   iNumFiles = lenarray(Sfiles)
 
+  ; Error handling: if an error occurs, log the directory and exit
+  if iNumFiles == 0 then
+    schedule 100, 0, 1
+  endif
+
   ; Initialize the maximum length variable
   iMaxLen = 0
 
@@ -142,6 +147,11 @@ instr 99
 
     ; Get the file length
     iFileLen filelen Sfile
+
+    ; Error handling: if an error occurs, log the directory and exit
+    if iFileLen == 0 then
+      schedule 100, 0, 1
+    endif
 
     ; Update the maximum length
     iMaxLen = max(iMaxLen, iFileLen)
@@ -155,6 +165,19 @@ instr 99
 
   ; Schedule the final mixing
   schedule 2, 0, iMaxLen
+
+  
+endin
+
+instr 100
+  ; Error handling instrument
+  Sdir strget 1
+  SErrorLog sprintf "%s/error_log.txt", Sdir
+  ihandle fiopen SErrorLog, 0
+  Smessage sprintf "Error processing directory: %s\n", Sdir
+  fprints ihandle, Smessage
+  ficlose ihandle
+  exitnow
 endin
 
 </CsInstruments>
